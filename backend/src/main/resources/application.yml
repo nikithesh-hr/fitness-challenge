@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: fitness-challenge
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fitness_challenge
+    username: postgres
+    password: admin
+    driver-class-name: org.postgresql.Driver
+  #spring.datasource.username=postgres
+  #spring.datasource.password=admin
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+cors:
+  allowed-origins: http://localhost:3000
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
