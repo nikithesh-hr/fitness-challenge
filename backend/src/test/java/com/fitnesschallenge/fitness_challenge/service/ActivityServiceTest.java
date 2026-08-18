@@ -105,7 +105,7 @@ class ActivityServiceTest {
             when(scoringEngine.calculateDistancePoints(SportType.RUNNING, new BigDecimal("5.25"))).thenReturn(525);
             when(activityRepository.save(any())).thenReturn(saved);
 
-            ActivityResponse response = activityService.ingest(req, null);
+            ActivityResponse response = activityService.ingest(req, null).response();
 
             verify(scoringEngine).calculateDistancePoints(SportType.RUNNING, new BigDecimal("5.25"));
             assertThat(response.getPointsAwarded()).isEqualTo(525);
@@ -124,7 +124,7 @@ class ActivityServiceTest {
             when(scoringEngine.calculateDistancePoints(SportType.WALKING, new BigDecimal("1.55"))).thenReturn(77);
             when(activityRepository.save(any())).thenReturn(saved);
 
-            ActivityResponse response = activityService.ingest(req, null);
+            ActivityResponse response = activityService.ingest(req, null).response();
 
             verify(scoringEngine).calculateDistancePoints(SportType.WALKING, new BigDecimal("1.55"));
             assertThat(response.getPointsAwarded()).isEqualTo(77);
@@ -167,7 +167,7 @@ class ActivityServiceTest {
             when(scoringEngine.calculateDurationPoints(SportType.GYM, 45, 50)).thenReturn(225);
             when(activityRepository.save(any())).thenReturn(saved);
 
-            ActivityResponse response = activityService.ingest(req, null);
+            ActivityResponse response = activityService.ingest(req, null).response();
 
             verify(scoringEngine).calculateDurationPoints(SportType.GYM, 45, 50);
             assertThat(response.getPointsAwarded()).isEqualTo(225);
@@ -244,7 +244,7 @@ class ActivityServiceTest {
         when(scoringEngine.calculateStepPoints(8450)).thenReturn(84);
         when(activityRepository.save(any())).thenReturn(saved);
 
-        ActivityResponse response = activityService.ingest(req, null);
+        ActivityResponse response = activityService.ingest(req, null).response();
 
         verify(scoringEngine).calculateStepPoints(8450);
         assertThat(response.getPointsAwarded()).isEqualTo(84);
@@ -287,7 +287,7 @@ class ActivityServiceTest {
         when(scoringEngine.calculateDistancePoints(any(), any())).thenReturn(500);
         when(activityRepository.save(any())).thenReturn(saved);
 
-        ActivityResponse response = activityService.ingest(req, null);
+        ActivityResponse response = activityService.ingest(req, null).response();
 
         assertThat(response.getExtraFields()).containsEntry("heartRateBpm", 145);
         assertThat(response.getExtraFields()).containsEntry("weather", "sunny");
@@ -308,7 +308,7 @@ class ActivityServiceTest {
         when(scoringEngine.calculateDistancePoints(any(), any())).thenReturn(500);
         when(activityRepository.save(any())).thenReturn(saved);
 
-        ActivityResponse response = activityService.ingest(req, null);
+        ActivityResponse response = activityService.ingest(req, null).response();
 
         assertThat(response.getActivityId()).isEqualTo(ACTIVITY_ID);
         assertThat(response.getUserId()).isEqualTo(USER_ID);
@@ -382,7 +382,7 @@ class ActivityServiceTest {
             ActivityRequest req = baseRequest("RUNNING");
             req.setDistanceKm(new BigDecimal("5.25"));
 
-            ActivityResponse response = activityService.ingest(req, key);
+            ActivityResponse response = activityService.ingest(req, key).response();
 
             assertThat(response.getActivityId()).isEqualTo(ACTIVITY_ID);
             assertThat(response.getPointsAwarded()).isEqualTo(525);
@@ -475,7 +475,7 @@ class ActivityServiceTest {
 
             when(activityRepository.findByIdempotencyKey(key)).thenReturn(Optional.of(existing));
 
-            ActivityResponse response = activityService.ingest(baseRequest("GYM"), key);
+            ActivityResponse response = activityService.ingest(baseRequest("GYM"), key).response();
 
             assertThat(response.getDurationMinutes()).isEqualTo(45);
             assertThat(response.getDurationSeconds()).isEqualTo(50);

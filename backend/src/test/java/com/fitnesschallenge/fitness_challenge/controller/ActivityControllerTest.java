@@ -50,12 +50,20 @@ class ActivityControllerTest {
                 .build();
     }
 
+    private ActivityService.IngestResult created(int pts) {
+        return new ActivityService.IngestResult(runningResponse(pts), false);
+    }
+
+    private ActivityService.IngestResult replayed(int pts) {
+        return new ActivityService.IngestResult(runningResponse(pts), true);
+    }
+
     // ── Ingest success ────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("POST /v1/activities — RUNNING valid → 201 with pointsAwarded")
     void runningValid_returns201() throws Exception {
-        when(activityService.ingest(any(), any())).thenReturn(runningResponse(525));
+        when(activityService.ingest(any(), any())).thenReturn(created(525));
 
         mockMvc.perform(post("/v1/activities")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -243,7 +251,7 @@ class ActivityControllerTest {
         @DisplayName("Header present → service receives the parsed UUID")
         void headerPresent_serviceReceivesUUID() throws Exception {
             UUID key = UUID.randomUUID();
-            when(activityService.ingest(any(), any())).thenReturn(runningResponse(500));
+            when(activityService.ingest(any(), any())).thenReturn(created(500));
 
             mockMvc.perform(post("/v1/activities")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -259,7 +267,7 @@ class ActivityControllerTest {
         @Test
         @DisplayName("Header absent → service receives null")
         void headerAbsent_serviceReceivesNull() throws Exception {
-            when(activityService.ingest(any(), any())).thenReturn(runningResponse(500));
+            when(activityService.ingest(any(), any())).thenReturn(created(500));
 
             mockMvc.perform(post("/v1/activities")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -272,16 +280,16 @@ class ActivityControllerTest {
         }
 
         @Test
-        @DisplayName("Duplicate key → returns 201 with cached response body")
-        void duplicateKey_returns201WithCachedBody() throws Exception {
+        @DisplayName("Duplicate key → returns 200 with cached response body")
+        void duplicateKey_returns200WithCachedBody() throws Exception {
             UUID key = UUID.randomUUID();
-            when(activityService.ingest(any(), any())).thenReturn(runningResponse(525));
+            when(activityService.ingest(any(), any())).thenReturn(replayed(525));
 
             mockMvc.perform(post("/v1/activities")
                             .contentType(MediaType.APPLICATION_JSON)
                             .header("Idempotency-Key", key.toString())
                             .content(VALID_BODY))
-                    .andExpect(status().isCreated())
+                    .andExpect(status().isOk())
                     .andExpect(jsonPath("$.activityId").value(ACTIVITY_ID.toString()))
                     .andExpect(jsonPath("$.pointsAwarded").value(525));
         }

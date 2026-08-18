@@ -32,6 +32,16 @@ const makeActivity = (overrides = {}) => ({
   ...overrides,
 });
 
+function pageData(content, { totalPages = 1, totalElements } = {}) {
+  return {
+    content,
+    page: {
+      totalPages,
+      totalElements: totalElements ?? content.length,
+    },
+  };
+}
+
 describe('ActivityHistoryTable', () => {
   beforeEach(() => {
     useActivities.mockReset();
@@ -50,7 +60,7 @@ describe('ActivityHistoryTable', () => {
 
   it('shows "No activities logged yet." when content is empty', () => {
     useActivities.mockReturnValue({
-      data: { content: [], totalPages: 0 },
+      data: pageData([], { totalPages: 0, totalElements: 0 }),
       isLoading: false,
       isFetching: false,
     });
@@ -62,7 +72,7 @@ describe('ActivityHistoryTable', () => {
 
   it('renders sport label from SPORT_META', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity({ sport: 'RUNNING' })], totalPages: 1 },
+      data: pageData([makeActivity({ sport: 'RUNNING' })]),
       isLoading: false, isFetching: false,
     });
     renderTable();
@@ -71,7 +81,7 @@ describe('ActivityHistoryTable', () => {
 
   it('renders sport icon from SPORT_META', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity({ sport: 'RUNNING' })], totalPages: 1 },
+      data: pageData([makeActivity({ sport: 'RUNNING' })]),
       isLoading: false, isFetching: false,
     });
     renderTable();
@@ -80,7 +90,7 @@ describe('ActivityHistoryTable', () => {
 
   it('renders formatted metric for distance sport (km)', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity({ sport: 'RUNNING', distanceKm: 5.25 })], totalPages: 1 },
+      data: pageData([makeActivity({ sport: 'RUNNING', distanceKm: 5.25 })]),
       isLoading: false, isFetching: false,
     });
     renderTable();
@@ -90,8 +100,7 @@ describe('ActivityHistoryTable', () => {
   it('renders formatted metric for duration sport (min/sec)', () => {
     useActivities.mockReturnValue({
       data: {
-        content: [makeActivity({ sport: 'GYM', distanceKm: undefined, durationMinutes: 45, durationSeconds: 50 })],
-        totalPages: 1,
+        ...pageData([makeActivity({ sport: 'GYM', distanceKm: undefined, durationMinutes: 45, durationSeconds: 50 })]),
       },
       isLoading: false, isFetching: false,
     });
@@ -102,8 +111,7 @@ describe('ActivityHistoryTable', () => {
   it('renders formatted step count for DAILY_STEPS', () => {
     useActivities.mockReturnValue({
       data: {
-        content: [makeActivity({ sport: 'DAILY_STEPS', distanceKm: undefined, stepCount: 8450 })],
-        totalPages: 1,
+        ...pageData([makeActivity({ sport: 'DAILY_STEPS', distanceKm: undefined, stepCount: 8450 })]),
       },
       isLoading: false, isFetching: false,
     });
@@ -113,76 +121,41 @@ describe('ActivityHistoryTable', () => {
 
   it('renders pointsAwarded with + prefix', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity({ pointsAwarded: 525 })], totalPages: 1 },
+      data: pageData([makeActivity({ pointsAwarded: 525 })]),
       isLoading: false, isFetching: false,
     });
     renderTable();
     expect(screen.getByText('+525')).toBeInTheDocument();
   });
 
-  // ── Page total footer ─────────────────────────────────────────────────────
-
-  it('shows "Total Points (this page)" footer label', () => {
-    useActivities.mockReturnValue({
-      data: { content: [makeActivity({ pointsAwarded: 525 })], totalPages: 1 },
-      isLoading: false, isFetching: false,
-    });
-    renderTable();
-    expect(screen.getByText(/total points \(this page\)/i)).toBeInTheDocument();
-  });
-
-  it('footer total sums all pointsAwarded on the page', () => {
-    useActivities.mockReturnValue({
-      data: {
-        content: [
-          makeActivity({ activityId: 'a1', pointsAwarded: 525 }),
-          makeActivity({ activityId: 'a2', pointsAwarded: 77 }),
-        ],
-        totalPages: 1,
-      },
-      isLoading: false, isFetching: false,
-    });
-    renderTable();
-    expect(screen.getByText('602')).toBeInTheDocument();
-  });
-
-  it('footer total is 0 for zero-point activity', () => {
-    useActivities.mockReturnValue({
-      data: {
-        content: [makeActivity({ activityId: 'a1', pointsAwarded: 0 })],
-        totalPages: 1,
-      },
-      isLoading: false, isFetching: false,
-    });
-    renderTable();
-    expect(screen.getByText('0')).toBeInTheDocument();
-  });
-
   // ── Pagination ────────────────────────────────────────────────────────────
 
-  it('does NOT show pagination when totalPages is 1', () => {
+  it('shows pagination controls when there are activities, even if totalPages is 1', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity()], totalPages: 1 },
-      isLoading: false, isFetching: false,
-    });
-    renderTable();
-    expect(screen.queryByText(/previous/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/next/i)).not.toBeInTheDocument();
-  });
-
-  it('shows pagination controls when totalPages > 1', () => {
-    useActivities.mockReturnValue({
-      data: { content: [makeActivity()], totalPages: 3 },
+      data: pageData([makeActivity()]),
       isLoading: false, isFetching: false,
     });
     renderTable();
     expect(screen.getByText(/previous/i)).toBeInTheDocument();
     expect(screen.getByText(/next/i)).toBeInTheDocument();
+    expect(screen.getByText(/previous/i).closest('button')).toBeDisabled();
+    expect(screen.getByText(/next/i).closest('button')).toBeDisabled();
+  });
+
+  it('shows pagination controls when totalPages > 1', () => {
+    useActivities.mockReturnValue({
+      data: pageData([makeActivity()], { totalPages: 3, totalElements: 25 }),
+      isLoading: false, isFetching: false,
+    });
+    renderTable();
+    expect(screen.getByText(/previous/i)).toBeInTheDocument();
+    expect(screen.getByText(/next/i)).toBeInTheDocument();
+    expect(screen.getByText(/next/i).closest('button')).not.toBeDisabled();
   });
 
   it('Previous button is disabled on first page', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity()], totalPages: 3 },
+      data: pageData([makeActivity()], { totalPages: 3, totalElements: 25 }),
       isLoading: false, isFetching: false,
     });
     renderTable();
@@ -191,18 +164,19 @@ describe('ActivityHistoryTable', () => {
 
   it('shows correct page label "Page 1 of 3"', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity()], totalPages: 3 },
+      data: pageData([makeActivity()], { totalPages: 3, totalElements: 25 }),
       isLoading: false, isFetching: false,
     });
     renderTable();
     expect(screen.getByText(/page 1 of 3/i)).toBeInTheDocument();
+    expect(screen.getByText(/25 activities/i)).toBeInTheDocument();
   });
 
   // ── Column headers ────────────────────────────────────────────────────────
 
   it('renders Date, Sport, Metric, Points column headers', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity()], totalPages: 1 },
+      data: pageData([makeActivity()]),
       isLoading: false, isFetching: false,
     });
     renderTable();
@@ -217,11 +191,10 @@ describe('ActivityHistoryTable', () => {
   it('shows a delete (trash) button for each activity row', () => {
     useActivities.mockReturnValue({
       data: {
-        content: [
+        ...pageData([
           makeActivity({ activityId: 'a1' }),
           makeActivity({ activityId: 'a2' }),
-        ],
-        totalPages: 1,
+        ]),
       },
       isLoading: false, isFetching: false,
     });
@@ -231,7 +204,7 @@ describe('ActivityHistoryTable', () => {
 
   it('shows "Yes, delete" and "Cancel" buttons after clicking trash icon', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity({ activityId: 'a1' })], totalPages: 1 },
+      data: pageData([makeActivity({ activityId: 'a1' })]),
       isLoading: false, isFetching: false,
     });
     renderTable();
@@ -242,7 +215,7 @@ describe('ActivityHistoryTable', () => {
 
   it('hides the confirmation and shows trash button again after Cancel', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity({ activityId: 'a1' })], totalPages: 1 },
+      data: pageData([makeActivity({ activityId: 'a1' })]),
       isLoading: false, isFetching: false,
     });
     renderTable();
@@ -255,7 +228,7 @@ describe('ActivityHistoryTable', () => {
   it('calls deleteActivity with the correct activityId on confirm', async () => {
     deleteActivity.mockResolvedValue(undefined);
     useActivities.mockReturnValue({
-      data: { content: [makeActivity({ activityId: 'act-42' })], totalPages: 1 },
+      data: pageData([makeActivity({ activityId: 'act-42' })]),
       isLoading: false, isFetching: false,
     });
     renderTable();
@@ -268,7 +241,7 @@ describe('ActivityHistoryTable', () => {
 
   it('does not call deleteActivity when Cancel is clicked', () => {
     useActivities.mockReturnValue({
-      data: { content: [makeActivity({ activityId: 'a1' })], totalPages: 1 },
+      data: pageData([makeActivity({ activityId: 'a1' })]),
       isLoading: false, isFetching: false,
     });
     renderTable();

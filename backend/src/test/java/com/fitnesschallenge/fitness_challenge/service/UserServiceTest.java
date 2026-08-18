@@ -6,6 +6,7 @@ import com.fitnesschallenge.fitness_challenge.dto.response.UserSearchResponse;
 import com.fitnesschallenge.fitness_challenge.entity.User;
 import com.fitnesschallenge.fitness_challenge.exception.DuplicateUserException;
 import com.fitnesschallenge.fitness_challenge.exception.UserNotFoundException;
+import com.fitnesschallenge.fitness_challenge.repository.ActivityRepository;
 import com.fitnesschallenge.fitness_challenge.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,6 +33,9 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ActivityRepository activityRepository;
 
     @InjectMocks
     private UserService userService;
@@ -167,14 +171,16 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("User found → calls deleteById with correct id")
+        @DisplayName("User found → deletes activities then calls deleteById with correct id")
         void userFound_callsDeleteById() {
             when(userRepository.existsById(DELETE_ID)).thenReturn(true);
+            doNothing().when(activityRepository).deleteByUserId(DELETE_ID);
             doNothing().when(userRepository).deleteById(DELETE_ID);
 
             userService.deleteUser(DELETE_ID);
 
             verify(userRepository).existsById(DELETE_ID);
+            verify(activityRepository).deleteByUserId(DELETE_ID);
             verify(userRepository).deleteById(DELETE_ID);
         }
 
@@ -182,6 +188,7 @@ class UserServiceTest {
         @DisplayName("User found → repository.save is never called")
         void userFound_doesNotSave() {
             when(userRepository.existsById(DELETE_ID)).thenReturn(true);
+            doNothing().when(activityRepository).deleteByUserId(DELETE_ID);
             doNothing().when(userRepository).deleteById(DELETE_ID);
 
             userService.deleteUser(DELETE_ID);
