@@ -48,6 +48,40 @@ describe('LogActivityForm', () => {
     expect(logActivity).not.toHaveBeenCalled();
   });
 
+  it('truncates running distance to 3 decimal places', async () => {
+    logActivity.mockResolvedValue({ pointsAwarded: 525 });
+    const { container } = renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '5.2519' } });
+    expect(screen.getByRole('spinbutton')).toHaveValue(5.251);
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => {
+      expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({
+        sport: 'RUNNING',
+        distanceKm: 5.251,
+      }), 'key-1');
+    });
+  });
+
+  it('clamps running distance to 1000 km', async () => {
+    logActivity.mockResolvedValue({ pointsAwarded: 100000 });
+    const { container } = renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '1000.5' } });
+    expect(screen.getByRole('spinbutton')).toHaveValue(1000);
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => {
+      expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({
+        sport: 'RUNNING',
+        distanceKm: 1000,
+      }), 'key-1');
+    });
+  });
+
   it('submits distance sport payload correctly', async () => {
     logActivity.mockResolvedValue({ pointsAwarded: 525 });
     const { container } = renderForm();
@@ -68,6 +102,24 @@ describe('LogActivityForm', () => {
     expect(screen.getByText(/you earned 525 points/i)).toBeInTheDocument();
   });
 
+  it('clamps gym duration minutes to 1440 (24 hours)', async () => {
+    logActivity.mockResolvedValue({ pointsAwarded: 7200 });
+    const { container } = renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'GYM' } });
+    fireEvent.change(screen.getByPlaceholderText(/minutes/i), { target: { value: '1441' } });
+    expect(screen.getByPlaceholderText(/minutes/i)).toHaveValue(1440);
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => {
+      expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({
+        sport: 'GYM',
+        durationMinutes: 1440,
+      }), 'key-1');
+    });
+  });
+
   it('submits duration sport payload correctly', async () => {
     logActivity.mockResolvedValue({ pointsAwarded: 225 });
     const { container } = renderForm();
@@ -83,6 +135,24 @@ describe('LogActivityForm', () => {
         sport: 'GYM',
         durationMinutes: 45,
         durationSeconds: 50,
+      }), 'key-1');
+    });
+  });
+
+  it('clamps daily steps to the 100000 human daily max', async () => {
+    logActivity.mockResolvedValue({ pointsAwarded: 1000 });
+    const { container } = renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'DAILY_STEPS' } });
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '100001' } });
+    expect(screen.getByRole('spinbutton')).toHaveValue(100000);
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => {
+      expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({
+        sport: 'DAILY_STEPS',
+        stepCount: 100000,
       }), 'key-1');
     });
   });
@@ -124,6 +194,17 @@ describe('LogActivityForm', () => {
     });
   });
 
+  it('blocks zero distance on the client before submit', () => {
+    const { container } = renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '0' } });
+    fireEvent.submit(container.querySelector('form'));
+
+    expect(screen.getByText(/distance must be between 0.001 and 1000 km/i)).toBeInTheDocument();
+    expect(logActivity).not.toHaveBeenCalled();
+  });
+
   it('shows server field validation errors', async () => {
     logActivity.mockRejectedValue({
       errors: [{ field: 'distanceKm', message: 'distanceKm must be greater than 0' }],
@@ -131,7 +212,7 @@ describe('LogActivityForm', () => {
     const { container } = renderForm();
 
     fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '0' } });
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '5' } });
     fireEvent.submit(container.querySelector('form'));
 
     await waitFor(() => {

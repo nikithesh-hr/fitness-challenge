@@ -6,6 +6,12 @@ import UserSearchPicker from './UserSearchPicker';
 const SPORTS = ['RUNNING', 'WALKING', 'CYCLING', 'GYM', 'SWIMMING', 'DAILY_STEPS'];
 const DISTANCE_SPORTS = ['RUNNING', 'WALKING', 'CYCLING'];
 const DURATION_SPORTS = ['GYM', 'SWIMMING'];
+const MAX_DAILY_STEPS = 100_000;
+const MAX_DISTANCE_KM = 1000;
+const MAX_DISTANCE_DECIMALS = 3;
+const MAX_DURATION_MINUTES = 1440;
+const MAX_DURATION_SECONDS = 59;
+const MAX_DURATION_TOTAL_SECONDS = 24 * 60 * 60;
 
 function todayLocal() {
   const now = new Date();
@@ -56,6 +62,74 @@ export default function LogActivityForm() {
     setFieldErrors((e) => ({ ...e, [key]: undefined }));
   }
 
+  function setDistanceKm(raw) {
+    if (raw === '') {
+      set('distanceKm', '');
+      return;
+    }
+    let next = raw;
+    if (next.startsWith('.')) next = `0${next}`;
+    const n = parseFloat(next);
+    if (Number.isNaN(n)) return;
+    if (n < 0) {
+      set('distanceKm', '0');
+      return;
+    }
+    if (n > MAX_DISTANCE_KM) {
+      set('distanceKm', String(MAX_DISTANCE_KM));
+      return;
+    }
+    const dot = next.indexOf('.');
+    if (dot !== -1) {
+      const whole = next.slice(0, dot);
+      const frac = next.slice(dot + 1, dot + 1 + MAX_DISTANCE_DECIMALS);
+      next = `${whole}.${frac}`;
+    }
+    set('distanceKm', next);
+  }
+
+  function clampInt(raw, min, max) {
+    if (raw === '') return '';
+    const n = parseInt(raw, 10);
+    if (Number.isNaN(n)) return null;
+    return Math.min(Math.max(n, min), max);
+  }
+
+  function setDurationMinutes(raw) {
+    const clamped = clampInt(raw, 0, MAX_DURATION_MINUTES);
+    if (clamped === null) return;
+    setForm((f) => {
+      const minutes = clamped === '' ? 0 : clamped;
+      let seconds = parseInt(f.durationSeconds, 10) || 0;
+      if (minutes * 60 + seconds > MAX_DURATION_TOTAL_SECONDS) {
+        seconds = 0;
+      }
+      return {
+        ...f,
+        durationMinutes: clamped === '' ? '' : String(clamped),
+        durationSeconds: f.durationSeconds === '' && seconds === 0 ? f.durationSeconds : String(seconds),
+      };
+    });
+    setFieldErrors((e) => ({ ...e, durationMinutes: undefined }));
+  }
+
+  function setDurationSeconds(raw) {
+    const clamped = clampInt(raw, 0, MAX_DURATION_SECONDS);
+    if (clamped === null) return;
+    setForm((f) => {
+      const minutes = parseInt(f.durationMinutes, 10) || 0;
+      let seconds = clamped === '' ? 0 : clamped;
+      if (minutes * 60 + seconds > MAX_DURATION_TOTAL_SECONDS) {
+        seconds = 0;
+      }
+      return {
+        ...f,
+        durationSeconds: clamped === '' ? '' : String(seconds),
+      };
+    });
+    setFieldErrors((e) => ({ ...e, durationMinutes: undefined }));
+  }
+
   function addExtraField() {
     setExtraFields((f) => [...f, { key: '', value: '' }]);
   }
@@ -90,12 +164,30 @@ export default function LogActivityForm() {
     };
 
     if (DISTANCE_SPORTS.includes(form.sport)) {
+      const distanceKm = parseFloat(form.distanceKm);
+      if (Number.isNaN(distanceKm) || distanceKm <= 0 || distanceKm > MAX_DISTANCE_KM) {
+        setFieldErrors({ distanceKm: `Distance must be between 0.001 and ${MAX_DISTANCE_KM} km.` });
+        return;
+      }
       payload.distanceKm = parseFloat(form.distanceKm);
     } else if (DURATION_SPORTS.includes(form.sport)) {
-      payload.durationMinutes = parseInt(form.durationMinutes, 10) || 0;
-      payload.durationSeconds = parseInt(form.durationSeconds, 10) || 0;
+      const minutes = parseInt(form.durationMinutes, 10) || 0;
+      const seconds = parseInt(form.durationSeconds, 10) || 0;
+      if (minutes < 0 || minutes > MAX_DURATION_MINUTES
+          || seconds < 0 || seconds > MAX_DURATION_SECONDS
+          || (minutes * 60 + seconds) > MAX_DURATION_TOTAL_SECONDS) {
+        setFieldErrors({ durationMinutes: 'Duration must be between 0 and 24 hours.' });
+        return;
+      }
+      payload.durationMinutes = minutes;
+      payload.durationSeconds = seconds;
     } else {
-      payload.stepCount = parseInt(form.stepCount, 10);
+      const steps = parseInt(form.stepCount, 10);
+      if (!Number.isInteger(steps) || steps < 1 || steps > MAX_DAILY_STEPS) {
+        setFieldErrors({ stepCount: `Step count must be between 1 and ${MAX_DAILY_STEPS.toLocaleString()}.` });
+        return;
+      }
+      payload.stepCount = steps;
     }
 
     mutation.mutate({ payload, key: idempotencyKey });
@@ -146,12 +238,14 @@ export default function LogActivityForm() {
           <input
             type="number"
             min="0.001"
+            max={MAX_DISTANCE_KM}
             step="0.001"
             value={form.distanceKm}
-            onChange={(e) => set('distanceKm', e.target.value)}
+            onChange={(e) => setDistanceKm(e.target.value)}
             required
             className={`w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500 transition ${fieldErrors.distanceKm ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
           />
+          <p className="mt-1 text-xs text-gray-400">Maximum 1,000 km, up to 3 decimal places</p>
           {fieldErrors.distanceKm && <p className="mt-1 text-xs text-red-600">{fieldErrors.distanceKm}</p>}
         </div>
       )}
@@ -164,8 +258,9 @@ export default function LogActivityForm() {
               <input
                 type="number"
                 min="0"
+                max={MAX_DURATION_MINUTES}
                 value={form.durationMinutes}
-                onChange={(e) => set('durationMinutes', e.target.value)}
+                onChange={(e) => setDurationMinutes(e.target.value)}
                 required
                 placeholder="Minutes"
                 className={`w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500 transition ${fieldErrors.durationMinutes ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
@@ -176,14 +271,15 @@ export default function LogActivityForm() {
               <input
                 type="number"
                 min="0"
-                max="59"
+                max={MAX_DURATION_SECONDS}
                 value={form.durationSeconds}
-                onChange={(e) => set('durationSeconds', e.target.value)}
+                onChange={(e) => setDurationSeconds(e.target.value)}
                 placeholder="Seconds (0–59)"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500 transition"
               />
             </div>
           </div>
+          <p className="mt-1 text-xs text-gray-400">Maximum 24 hours (1,440 minutes)</p>
         </div>
       )}
 
@@ -193,12 +289,23 @@ export default function LogActivityForm() {
           <input
             type="number"
             min="1"
+            max={MAX_DAILY_STEPS}
             step="1"
             value={form.stepCount}
-            onChange={(e) => set('stepCount', e.target.value)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === '') {
+                set('stepCount', '');
+                return;
+              }
+              const n = parseInt(raw, 10);
+              if (Number.isNaN(n)) return;
+              set('stepCount', String(Math.min(Math.max(n, 0), MAX_DAILY_STEPS)));
+            }}
             required
             className={`w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500 transition ${fieldErrors.stepCount ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
           />
+          <p className="mt-1 text-xs text-gray-400">Maximum 100,000 steps (about a full extreme day)</p>
           {fieldErrors.stepCount && <p className="mt-1 text-xs text-red-600">{fieldErrors.stepCount}</p>}
         </div>
       )}

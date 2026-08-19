@@ -72,6 +72,22 @@ class SportMetricConsistencyValidatorTest {
     class RunningTests {
 
         @Test
+        @DisplayName("distanceKm of 1000 → valid")
+        void maxDistanceKm_valid() {
+            ActivityRequest req = baseRequest("RUNNING");
+            req.setDistanceKm(new BigDecimal("1000"));
+            assertThat(validator.isValid(req, context)).isTrue();
+        }
+
+        @Test
+        @DisplayName("distanceKm over 1000 → invalid")
+        void overMaxDistanceKm_invalid() {
+            ActivityRequest req = baseRequest("RUNNING");
+            req.setDistanceKm(new BigDecimal("1000.001"));
+            assertThat(validator.isValid(req, context)).isFalse();
+        }
+
+        @Test
         @DisplayName("distanceKm provided → valid")
         void withDistanceKm_valid() {
             ActivityRequest req = baseRequest("RUNNING");
@@ -169,6 +185,23 @@ class SportMetricConsistencyValidatorTest {
     @Nested
     @DisplayName("GYM (duration sport)")
     class GymTests {
+
+        @Test
+        @DisplayName("durationMinutes of 1440 (24 hours) → valid")
+        void twentyFourHours_valid() {
+            ActivityRequest req = baseRequest("GYM");
+            req.setDurationMinutes(1440);
+            assertThat(validator.isValid(req, context)).isTrue();
+        }
+
+        @Test
+        @DisplayName("1440 minutes + 1 second → invalid (over 24 hours)")
+        void overTwentyFourHours_invalid() {
+            ActivityRequest req = baseRequest("GYM");
+            req.setDurationMinutes(1440);
+            req.setDurationSeconds(1);
+            assertThat(validator.isValid(req, context)).isFalse();
+        }
 
         @Test
         @DisplayName("durationMinutes provided → valid")

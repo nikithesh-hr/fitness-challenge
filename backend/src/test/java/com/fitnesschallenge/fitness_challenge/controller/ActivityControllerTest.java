@@ -1,6 +1,7 @@
 package com.fitnesschallenge.fitness_challenge.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fitnesschallenge.fitness_challenge.dto.request.ActivityRequest;
 import com.fitnesschallenge.fitness_challenge.dto.response.ActivityResponse;
 import com.fitnesschallenge.fitness_challenge.exception.ActivityNotFoundException;
 import com.fitnesschallenge.fitness_challenge.exception.GlobalExceptionHandler;
@@ -80,6 +81,50 @@ class ActivityControllerTest {
                 .andExpect(jsonPath("$.activityId").value(ACTIVITY_ID.toString()));
     }
 
+    @Test
+    @DisplayName("POST /v1/activities — extra distance decimals truncated to 3 places")
+    void runningExtraDecimals_autoCorrected() throws Exception {
+        when(activityService.ingest(any(), any())).thenReturn(created(525));
+
+        mockMvc.perform(post("/v1/activities")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": "%s",
+                                  "sport": "RUNNING",
+                                  "distanceKm": 5.2519,
+                                  "recordedAt": "2026-08-11T09:00:00"
+                                }
+                                """.formatted(USER_ID)))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<ActivityRequest> captor = ArgumentCaptor.forClass(ActivityRequest.class);
+        verify(activityService).ingest(captor.capture(), any());
+        assertThat(captor.getValue().getDistanceKm()).isEqualByComparingTo("5.251");
+    }
+
+    @Test
+    @DisplayName("POST /v1/activities — distance over 1000 km clamped to 1000")
+    void runningOverMax_autoCorrectedTo1000() throws Exception {
+        when(activityService.ingest(any(), any())).thenReturn(created(100000));
+
+        mockMvc.perform(post("/v1/activities")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": "%s",
+                                  "sport": "RUNNING",
+                                  "distanceKm": 1000.001,
+                                  "recordedAt": "2026-08-11T09:00:00"
+                                }
+                                """.formatted(USER_ID)))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<ActivityRequest> captor = ArgumentCaptor.forClass(ActivityRequest.class);
+        verify(activityService).ingest(captor.capture(), any());
+        assertThat(captor.getValue().getDistanceKm()).isEqualByComparingTo("1000.000");
+    }
+
     // ── Validation failures ───────────────────────────────────────────────────
 
     @Nested
@@ -133,6 +178,22 @@ class ActivityControllerTest {
         }
 
         @Test
+        @DisplayName("GYM with more than 1440 minutes → 400")
+        void gymOverHumanDailyMax_returns400() throws Exception {
+            mockMvc.perform(post("/v1/activities")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "userId": "%s",
+                                      "sport": "GYM",
+                                      "durationMinutes": 1441,
+                                      "recordedAt": "2026-08-11T09:00:00"
+                                    }
+                                    """.formatted(USER_ID)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
         @DisplayName("GYM without durationMinutes → 400")
         void gymMissingDuration_returns400() throws Exception {
             mockMvc.perform(post("/v1/activities")
@@ -141,6 +202,22 @@ class ActivityControllerTest {
                                     {
                                       "userId": "%s",
                                       "sport": "GYM",
+                                      "recordedAt": "2026-08-11T09:00:00"
+                                    }
+                                    """.formatted(USER_ID)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("DAILY_STEPS with more than 100000 steps → 400")
+        void dailyStepsOverHumanDailyMax_returns400() throws Exception {
+            mockMvc.perform(post("/v1/activities")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "userId": "%s",
+                                      "sport": "DAILY_STEPS",
+                                      "stepCount": 100001,
                                       "recordedAt": "2026-08-11T09:00:00"
                                     }
                                     """.formatted(USER_ID)))
