@@ -102,6 +102,18 @@ describe('LogActivityForm', () => {
     expect(screen.getByText(/you earned 525 points/i)).toBeInTheDocument();
   });
 
+  it('rejects gym duration of 0 minutes', () => {
+    const { container } = renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'GYM' } });
+    fireEvent.change(screen.getByPlaceholderText(/minutes/i), { target: { value: '0' } });
+    fireEvent.submit(container.querySelector('form'));
+
+    expect(screen.getByText(/duration must be at least 1 minute/i)).toBeInTheDocument();
+    expect(logActivity).not.toHaveBeenCalled();
+  });
+
   it('clamps gym duration minutes to 1440 (24 hours)', async () => {
     logActivity.mockResolvedValue({ pointsAwarded: 7200 });
     const { container } = renderForm();

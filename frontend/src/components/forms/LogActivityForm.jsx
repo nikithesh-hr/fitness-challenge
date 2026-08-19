@@ -173,10 +173,10 @@ export default function LogActivityForm() {
     } else if (DURATION_SPORTS.includes(form.sport)) {
       const minutes = parseInt(form.durationMinutes, 10) || 0;
       const seconds = parseInt(form.durationSeconds, 10) || 0;
-      if (minutes < 0 || minutes > MAX_DURATION_MINUTES
+      if (minutes < 1 || minutes > MAX_DURATION_MINUTES
           || seconds < 0 || seconds > MAX_DURATION_SECONDS
           || (minutes * 60 + seconds) > MAX_DURATION_TOTAL_SECONDS) {
-        setFieldErrors({ durationMinutes: 'Duration must be between 0 and 24 hours.' });
+        setFieldErrors({ durationMinutes: 'Duration must be at least 1 minute and at most 24 hours.' });
         return;
       }
       payload.durationMinutes = minutes;
@@ -257,7 +257,7 @@ export default function LogActivityForm() {
             <div className="flex-1">
               <input
                 type="number"
-                min="0"
+                min="1"
                 max={MAX_DURATION_MINUTES}
                 value={form.durationMinutes}
                 onChange={(e) => setDurationMinutes(e.target.value)}
@@ -279,7 +279,7 @@ export default function LogActivityForm() {
               />
             </div>
           </div>
-          <p className="mt-1 text-xs text-gray-400">Maximum 24 hours (1,440 minutes)</p>
+          <p className="mt-1 text-xs text-gray-400">At least 1 minute, maximum 24 hours (1,440 minutes)</p>
         </div>
       )}
 

@@ -204,6 +204,23 @@ class SportMetricConsistencyValidatorTest {
         }
 
         @Test
+        @DisplayName("durationMinutes of 0 → invalid")
+        void zeroDurationMinutes_invalid() {
+            ActivityRequest req = baseRequest("GYM");
+            req.setDurationMinutes(0);
+            assertThat(validator.isValid(req, context)).isFalse();
+        }
+
+        @Test
+        @DisplayName("0 minutes + 30 seconds → invalid (minutes must be > 0)")
+        void zeroMinutesWithSeconds_invalid() {
+            ActivityRequest req = baseRequest("GYM");
+            req.setDurationMinutes(0);
+            req.setDurationSeconds(30);
+            assertThat(validator.isValid(req, context)).isFalse();
+        }
+
+        @Test
         @DisplayName("durationMinutes provided → valid")
         void withDurationMinutes_valid() {
             ActivityRequest req = baseRequest("GYM");

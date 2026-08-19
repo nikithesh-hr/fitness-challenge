@@ -194,6 +194,39 @@ class ActivityControllerTest {
         }
 
         @Test
+        @DisplayName("GYM with 0 minutes → 400")
+        void gymZeroMinutes_returns400() throws Exception {
+            mockMvc.perform(post("/v1/activities")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "userId": "%s",
+                                      "sport": "GYM",
+                                      "durationMinutes": 0,
+                                      "recordedAt": "2026-08-11T09:00:00"
+                                    }
+                                    """.formatted(USER_ID)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("SWIMMING with 0 minutes → 400")
+        void swimmingZeroMinutes_returns400() throws Exception {
+            mockMvc.perform(post("/v1/activities")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "userId": "%s",
+                                      "sport": "SWIMMING",
+                                      "durationMinutes": 0,
+                                      "durationSeconds": 45,
+                                      "recordedAt": "2026-08-11T09:00:00"
+                                    }
+                                    """.formatted(USER_ID)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
         @DisplayName("GYM without durationMinutes → 400")
         void gymMissingDuration_returns400() throws Exception {
             mockMvc.perform(post("/v1/activities")
