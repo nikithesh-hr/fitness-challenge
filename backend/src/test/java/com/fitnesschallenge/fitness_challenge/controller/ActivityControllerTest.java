@@ -125,6 +125,38 @@ class ActivityControllerTest {
         assertThat(captor.getValue().getDistanceKm()).isEqualByComparingTo("1000.000");
     }
 
+    @Test
+    @DisplayName("POST /v1/activities — GYM 0 min 59 sec passes validation")
+    void gymZeroMinutesFiftyNineSeconds_passesValidation() throws Exception {
+        ActivityResponse response = ActivityResponse.builder()
+                .activityId(ACTIVITY_ID).userId(USER_ID).sport("GYM")
+                .durationMinutes(0).durationSeconds(59).pointsAwarded(0)
+                .recordedAt(NOW).extraFields(Collections.emptyMap())
+                .build();
+        when(activityService.ingest(any(), any())).thenReturn(new ActivityService.IngestResult(response, false));
+
+        mockMvc.perform(post("/v1/activities")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": "%s",
+                                  "sport": "GYM",
+                                  "durationMinutes": 0,
+                                  "durationSeconds": 59,
+                                  "recordedAt": "2026-08-11T09:00:00"
+                                }
+                                """.formatted(USER_ID)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.pointsAwarded").value(0))
+                .andExpect(jsonPath("$.durationMinutes").value(0))
+                .andExpect(jsonPath("$.durationSeconds").value(59));
+
+        ArgumentCaptor<ActivityRequest> captor = ArgumentCaptor.forClass(ActivityRequest.class);
+        verify(activityService).ingest(captor.capture(), any());
+        assertThat(captor.getValue().getDurationMinutes()).isZero();
+        assertThat(captor.getValue().getDurationSeconds()).isEqualTo(59);
+    }
+
     // ── Validation failures ───────────────────────────────────────────────────
 
     @Nested
@@ -203,23 +235,6 @@ class ActivityControllerTest {
                                       "userId": "%s",
                                       "sport": "GYM",
                                       "durationMinutes": 0,
-                                      "recordedAt": "2026-08-11T09:00:00"
-                                    }
-                                    """.formatted(USER_ID)))
-                    .andExpect(status().isBadRequest());
-        }
-
-        @Test
-        @DisplayName("SWIMMING with 0 minutes → 400")
-        void swimmingZeroMinutes_returns400() throws Exception {
-            mockMvc.perform(post("/v1/activities")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {
-                                      "userId": "%s",
-                                      "sport": "SWIMMING",
-                                      "durationMinutes": 0,
-                                      "durationSeconds": 45,
                                       "recordedAt": "2026-08-11T09:00:00"
                                     }
                                     """.formatted(USER_ID)))

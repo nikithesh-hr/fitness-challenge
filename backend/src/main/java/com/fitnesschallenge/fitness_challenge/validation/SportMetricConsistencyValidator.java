@@ -55,13 +55,16 @@ public class SportMetricConsistencyValidator implements ConstraintValidator<Spor
 
     private boolean validateDurationSport(ActivityRequest request, ConstraintValidatorContext context) {
         boolean valid = true;
-        if (request.getDurationMinutes() == null || request.getDurationMinutes() <= 0) {
-            addViolation(context, "durationMinutes", "durationMinutes is required and must be > 0 for sport " + request.getSport());
+        if (request.getDurationMinutes() == null) {
+            addViolation(context, "durationMinutes", "durationMinutes is required for sport " + request.getSport());
             valid = false;
         } else {
             int seconds = request.getDurationSeconds() == null ? 0 : request.getDurationSeconds();
             long totalSeconds = (long) request.getDurationMinutes() * 60 + seconds;
-            if (totalSeconds > MAX_DURATION_TOTAL_SECONDS) {
+            if (totalSeconds <= 0) {
+                addViolation(context, "durationMinutes", "duration must be greater than 0 for sport " + request.getSport());
+                valid = false;
+            } else if (totalSeconds > MAX_DURATION_TOTAL_SECONDS) {
                 addViolation(context, "durationMinutes", "duration cannot exceed 24 hours for sport " + request.getSport());
                 valid = false;
             }

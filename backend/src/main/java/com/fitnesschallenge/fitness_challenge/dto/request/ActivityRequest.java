@@ -31,7 +31,7 @@ public class ActivityRequest {
     private BigDecimal distanceKm;
 
     // Duration sports: GYM, SWIMMING — cap at 24 hours (human daily max)
-    @Min(value = 1, message = "durationMinutes must be greater than 0")
+    @Min(value = 0, message = "durationMinutes must be >= 0")
     @Max(value = 1440, message = "durationMinutes must be at most 1440 (24 hours)")
     private Integer durationMinutes;
 

@@ -228,6 +228,27 @@ class ActivityServiceTest {
             verify(activityRepository).save(captor.capture());
             assertThat(captor.getValue().getDurationSeconds()).isEqualTo(115);
         }
+
+        @Test
+        @DisplayName("GYM 0 min 59 sec → 0 points (sub-minute duration)")
+        void gym_zeroMinutesFiftyNineSeconds_zeroPoints() {
+            ActivityRequest req = baseRequest("GYM");
+            req.setDurationMinutes(0);
+            req.setDurationSeconds(59);
+            Activity saved = savedActivity(SportType.GYM, 0);
+            saved.setDurationSeconds(59);
+
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser()));
+            when(scoringEngine.calculateDurationPoints(SportType.GYM, 0, 59)).thenReturn(0);
+            when(activityRepository.save(any())).thenReturn(saved);
+
+            ActivityResponse response = activityService.ingest(req, null).response();
+
+            verify(scoringEngine).calculateDurationPoints(SportType.GYM, 0, 59);
+            assertThat(response.getPointsAwarded()).isZero();
+            assertThat(response.getDurationMinutes()).isZero();
+            assertThat(response.getDurationSeconds()).isEqualTo(59);
+        }
     }
 
     // ── ingest — step sport ──────────────────────────────────────────────────

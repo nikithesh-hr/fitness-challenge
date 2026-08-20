@@ -102,16 +102,46 @@ describe('LogActivityForm', () => {
     expect(screen.getByText(/you earned 525 points/i)).toBeInTheDocument();
   });
 
-  it('rejects gym duration of 0 minutes', () => {
+  it('submits gym duration of 0 minutes 0 seconds and lets the backend validate it', async () => {
+    logActivity.mockRejectedValue({
+      errors: [{ field: 'durationMinutes', message: 'duration must be greater than 0 for sport GYM' }],
+    });
     const { container } = renderForm();
 
     fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'GYM' } });
     fireEvent.change(screen.getByPlaceholderText(/minutes/i), { target: { value: '0' } });
+    fireEvent.change(screen.getByPlaceholderText(/seconds/i), { target: { value: '0' } });
     fireEvent.submit(container.querySelector('form'));
 
-    expect(screen.getByText(/duration must be at least 1 minute/i)).toBeInTheDocument();
-    expect(logActivity).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({
+        sport: 'GYM',
+        durationMinutes: 0,
+        durationSeconds: 0,
+      }), 'key-1');
+    });
+    expect(screen.getByText(/duration must be greater than 0 for sport gym/i)).toBeInTheDocument();
+  });
+
+  it('accepts gym duration of 0 minutes 59 seconds and awards 0 points', async () => {
+    logActivity.mockResolvedValue({ pointsAwarded: 0 });
+    const { container } = renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: /pick user/i }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'GYM' } });
+    fireEvent.change(screen.getByPlaceholderText(/minutes/i), { target: { value: '0' } });
+    fireEvent.change(screen.getByPlaceholderText(/seconds/i), { target: { value: '59' } });
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => {
+      expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({
+        sport: 'GYM',
+        durationMinutes: 0,
+        durationSeconds: 59,
+      }), expect.any(String));
+    });
+    expect(screen.getByText(/you earned 0 points/i)).toBeInTheDocument();
   });
 
   it('clamps gym duration minutes to 1440 (24 hours)', async () => {
